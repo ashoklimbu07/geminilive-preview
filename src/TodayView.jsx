@@ -1,16 +1,12 @@
 // Post-confirmation home base: today's tasks as a calm, tappable checklist.
-function TaskRow({ task, onToggleDone }) {
+function TaskRow({ task, onToggleDone, onDelete }) {
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onToggleDone(task.id)}
-        className={`w-full flex items-start gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors border ${
-          task.done
-            ? 'bg-white/50 border-[#f0d0b8]'
-            : 'bg-white/80 border-[#f0d0b8] hover:border-rose-400/50'
-        }`}
-      >
+    <li
+      className={`w-full flex items-start gap-3 rounded-2xl px-4 py-3.5 border transition-colors ${
+        task.done ? 'bg-white/50 border-[#f0d0b8]' : 'bg-white/80 border-[#f0d0b8] hover:border-rose-400/50'
+      }`}
+    >
+      <button type="button" onClick={() => onToggleDone(task.id)} className="flex flex-1 min-w-0 items-start gap-3 text-left">
         <span
           className={`mt-0.5 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
             task.done ? 'bg-rose-400 border-rose-400 text-white' : 'border-[#e3b9a0] text-transparent'
@@ -31,11 +27,26 @@ function TaskRow({ task, onToggleDone }) {
           </span>
         </span>
       </button>
+      <button
+        type="button"
+        onClick={() => onDelete(task.id)}
+        aria-label="Delete task"
+        title="Delete task"
+        className="shrink-0 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center text-[#c98a6e] hover:text-white hover:bg-red-500 transition-colors"
+      >
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+        </svg>
+      </button>
     </li>
   )
 }
 
-export default function TodayView({ tasks, onToggleDone, onNewBrainDump }) {
+export default function TodayView({ tasks, onToggleDone, onDeleteTask, onNewBrainDump }) {
   const total = tasks.length
   const done = tasks.filter((t) => t.done).length
   const pct = total ? Math.round((done / total) * 100) : 0
@@ -83,7 +94,7 @@ export default function TodayView({ tasks, onToggleDone, onNewBrainDump }) {
       ) : (
         <ul className="flex flex-col gap-2.5">
           {tasks.map((t) => (
-            <TaskRow key={t.id} task={t} onToggleDone={onToggleDone} />
+            <TaskRow key={t.id} task={t} onToggleDone={onToggleDone} onDelete={onDeleteTask} />
           ))}
         </ul>
       )}
