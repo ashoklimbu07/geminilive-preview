@@ -32,17 +32,27 @@ export class MicStreamer {
     this.stream = null
     this.source = null
     this.processor = null
+    this.muted = false
+  }
+
+  // Gate outgoing audio while the model's reply is playing so the mic doesn't
+  // pick the speaker output back up and feed it back as "new" user speech.
+  setMuted(muted) {
+    this.muted = muted
   }
 
   async start() {
     console.log('[mic] requesting getUserMedia...')
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    })
     console.log('[mic] mic access granted, track:', this.stream.getAudioTracks()[0]?.label)
     this.audioContext = new AudioContext({ sampleRate: 16000 })
     console.log('[mic] AudioContext sampleRate:', this.audioContext.sampleRate)
     this.source = this.audioContext.createMediaStreamSource(this.stream)
     this.processor = this.audioContext.createScriptProcessor(4096, 1, 1)
     this.processor.onaudioprocess = (e) => {
+      if (this.muted) return
       const input = e.inputBuffer.getChannelData(0)
       const pcm = floatTo16BitPCM(input)
       this.onChunk(arrayBufferToBase64(pcm))

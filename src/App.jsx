@@ -255,14 +255,17 @@ function App() {
         if (sc.modelTurn?.parts) {
           for (const part of sc.modelTurn.parts) {
             if (part.inlineData?.data) {
+              micRef.current?.setMuted(true)
               playerRef.current?.playChunk(part.inlineData.data)
             }
           }
         }
         if (sc.turnComplete) {
+          micRef.current?.setMuted(false)
           finalizeTurn()
         }
         if (sc.interrupted) {
+          micRef.current?.setMuted(false)
           playerRef.current?.reset()
         }
       }
