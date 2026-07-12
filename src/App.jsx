@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { MicStreamer, AudioPlayer } from './audio'
+import { generatePlan } from './masterPrompt'
+import PlanView from './PlanView'
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
+
+// Tier 1: keeps the user talking without hijacking the conversation with advice or planning.
+const LIVE_SYSTEM_INSTRUCTION = `You are a passive listener for a user brain-dumping tasks out loud.
+Do NOT give advice, do NOT problem-solve, do NOT suggest plans or next steps.
+Only respond with a short acknowledgment (e.g. "ok", "got it", "noted") or, if something is genuinely
+ambiguous (like a missing time or deadline), a single short clarifying question. Never ask more than
+one question in a row. Never stack multiple sentences. Keep every response to at most 10 words.`
+
+const PLAN_STORAGE_KEY = 'task-chunking:last-session'
 
 console.log('[gemini-live] config', {
   apiKeyConfigured: Boolean(API_KEY),
@@ -20,7 +31,10 @@ const STATUS = {
 
 function App() {
   const [status, setStatus] = useState('idle')
-  const [messages, setMessages] = useState([]) // {role: 'user'|'model', text}
+  const [messages, setMessages] = useState([]) // {role: 'user'|'model', text, streaming, timestamp}
+  const [plan, setPlan] = useState(null)
+  const [planLoading, setPlanLoading] = useState(false)
+  const [planError, setPlanError] = useState(null)
   const wsRef = useRef(null)
   const micRef = useRef(null)
   const playerRef = useRef(null)
@@ -44,7 +58,7 @@ function App() {
         copy[copy.length - 1] = { ...last, text: last.text + text }
         return copy
       }
-      return [...prev, { role, text, streaming: true }]
+      return [...prev, { role, text, streaming: true, timestamp: Date.now() }]
     })
   }
 
@@ -71,6 +85,7 @@ function App() {
           setup: {
             model: MODEL,
             generationConfig: { responseModalities: ['AUDIO'] },
+            systemInstruction: { parts: [{ text: LIVE_SYSTEM_INSTRUCTION }] },
             outputAudioTranscription: {},
             inputAudioTranscription: {},
           },
@@ -232,6 +247,64 @@ function App() {
     }
   }
 
+  // Tier 2: freeze the transcript and hand only the user's utterances to the master prompt.
+  async function preparePlan() {
+    const userText = messages
+      .filter((m) => m.role === 'user' && m.text.trim())
+      .map((m) => m.text.trim())
+      .join('\n')
+
+    if (!userText) {
+      setPlanError('Nothing captured yet — talk for a bit first.')
+      return
+    }
+
+    setPlanError(null)
+    setPlanLoading(true)
+    try {
+      const result = await generatePlan(userText)
+      setPlan({ ...result, chunks: result.chunks.map((c) => ({ ...c, done: false })) })
+    } catch (err) {
+      console.error('[master-prompt] failed to generate plan', err instanceof Error ? err.message : err)
+      setPlanError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  function moveChunk(index, delta) {
+    setPlan((prev) => {
+      if (!prev) return prev
+      const chunks = [...prev.chunks]
+      const target = index + delta
+      if (target < 0 || target >= chunks.length) return prev
+      ;[chunks[index], chunks[target]] = [chunks[target], chunks[index]]
+      return { ...prev, chunks }
+    })
+  }
+
+  function removeChunk(id) {
+    setPlan((prev) => (prev ? { ...prev, chunks: prev.chunks.filter((c) => c.id !== id) } : prev))
+  }
+
+  function toggleChunkDone(id) {
+    setPlan((prev) =>
+      prev ? { ...prev, chunks: prev.chunks.map((c) => (c.id === id ? { ...c, done: !c.done } : c)) } : prev
+    )
+  }
+
+  function confirmPlan() {
+    if (!plan) return
+    try {
+      localStorage.setItem(
+        PLAN_STORAGE_KEY,
+        JSON.stringify({ savedAt: Date.now(), transcript: messages, plan })
+      )
+    } catch (err) {
+      console.error('[master-prompt] failed to persist plan', err instanceof Error ? err.message : err)
+    }
+  }
+
   const st = STATUS[status]
 
   return (
@@ -254,6 +327,26 @@ function App() {
       >
         {status === 'listening' ? 'Stop' : status === 'connecting' ? 'Connecting…' : 'Tap to talk'}
       </button>
+
+      <button
+        type="button"
+        onClick={preparePlan}
+        disabled={planLoading || messages.length === 0}
+        className="text-xs px-4 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 text-neutral-200"
+      >
+        {planLoading ? 'Preparing plan…' : 'Prepare plan'}
+      </button>
+
+      {planError && <p className="text-red-400 text-xs max-w-md text-center">{planError}</p>}
+
+      <PlanView
+        plan={plan}
+        onMove={moveChunk}
+        onRemove={removeChunk}
+        onToggleDone={toggleChunkDone}
+        onConfirm={confirmPlan}
+        onDismiss={() => setPlan(null)}
+      />
 
       <div className="w-full max-w-xl flex-1 flex flex-col gap-3 bg-neutral-900 rounded-xl p-4 min-h-[300px] max-h-[50vh] overflow-y-auto">
         {messages.length === 0 && (
