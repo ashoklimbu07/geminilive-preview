@@ -77,12 +77,24 @@ function App() {
     })
   }
 
+  // The live API can stream the model's reply before the user's own transcript for the
+  // same turn has finished arriving, so we buffer both and flush them in the right order
+  // (user first, then model) once the turn is actually complete.
   function finalizeTurn() {
-    setMessages((prev) => prev.map((m) => ({ ...m, streaming: false })))
-    if (modelTurnRef.current.toLowerCase().includes(PLAN_TRIGGER_PHRASE)) {
-      handlePlanTrigger()
-    }
+    const userText = userTurnRef.current.trim()
+    const modelText = modelTurnRef.current.trim()
+
+    setMessages((prev) => {
+      const next = prev.map((m) => ({ ...m, streaming: false }))
+      if (userText) next.push({ role: 'user', text: userText, streaming: false, timestamp: Date.now() })
+      if (modelText) next.push({ role: 'model', text: modelText, streaming: false, timestamp: Date.now() })
+      return next
+    })
+
+    const trigger = modelText.toLowerCase().includes(PLAN_TRIGGER_PHRASE)
+    userTurnRef.current = ''
     modelTurnRef.current = ''
+    if (trigger) handlePlanTrigger()
   }
 
   // Tier 1 -> Tier 2 handoff: the live conversation closes and the master prompt takes over.
@@ -235,10 +247,9 @@ function App() {
         if (!sc) return
 
         if (sc.inputTranscription?.text) {
-          appendOrCreate('user', sc.inputTranscription.text)
+          userTurnRef.current += sc.inputTranscription.text
         }
         if (sc.outputTranscription?.text) {
-          appendOrCreate('model', sc.outputTranscription.text)
           modelTurnRef.current += sc.outputTranscription.text
         }
         if (sc.modelTurn?.parts) {

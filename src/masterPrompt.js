@@ -4,14 +4,26 @@ import promptSpec from '../task-chunking-master-prompt.json'
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MASTER_MODEL = import.meta.env.VITE_GEMINI_MASTER_MODEL || 'models/gemini-2.5-flash'
 
+// Converts a draft-07 JSON Schema into the restricted OpenAPI-subset schema
+// Gemini's responseSchema accepts (no additionalProperties, no union `type` arrays).
 function stripSchemaMeta(node) {
   if (Array.isArray(node)) return node.map(stripSchemaMeta)
   if (node && typeof node === 'object') {
     const out = {}
+    let type = node.type
+    let nullable = false
+    if (Array.isArray(type)) {
+      nullable = type.includes('null')
+      type = type.find((t) => t !== 'null')
+    }
     for (const [key, value] of Object.entries(node)) {
       if (key === '$schema' || key === 'title' || key === 'description') continue
+      if (key === 'additionalProperties' || key === 'format') continue
+      if (key === 'type') continue
       out[key] = stripSchemaMeta(value)
     }
+    if (type !== undefined) out.type = type
+    if (nullable) out.nullable = true
     return out
   }
   return node
