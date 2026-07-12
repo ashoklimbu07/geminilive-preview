@@ -6,7 +6,6 @@ import PlanView from './PlanView'
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
 
-<<<<<<< HEAD
 // Tier 1: keeps the user talking, and hands off to Tier 2 the moment a task lands cleanly.
 const PLAN_TRIGGER_PHRASE = 'preparing your plan'
 const LIVE_SYSTEM_INSTRUCTION = `You are a passive listener for a user brain-dumping tasks out loud.
@@ -22,14 +21,6 @@ incomplete input.
 
 If something is genuinely ambiguous (missing time or deadline), ask a single short clarifying question
 instead. Never ask more than one question in a row. Never stack multiple sentences otherwise.`
-=======
-// Tier 1: keeps the user talking without hijacking the conversation with advice or planning.
-const LIVE_SYSTEM_INSTRUCTION = `You are a passive listener for a user brain-dumping tasks out loud.
-Do NOT give advice, do NOT problem-solve, do NOT suggest plans or next steps.
-Only respond with a short acknowledgment (e.g. "ok", "got it", "noted") or, if something is genuinely
-ambiguous (like a missing time or deadline), a single short clarifying question. Never ask more than
-one question in a row. Never stack multiple sentences. Keep every response to at most 10 words.`
->>>>>>> d8c9c1056751441bd83ac59a081ff924b314fa2a
 
 const PLAN_STORAGE_KEY = 'task-chunking:last-session'
 
