@@ -1,7 +1,7 @@
 // Tier 2: one-shot call to Gemini 2.5 Flash that turns a raw transcript into a structured plan.
 import promptSpec from '../task-chunking-master-prompt.json'
+import { GEMINI_API_KEYS } from './apiKeys'
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MASTER_MODEL = import.meta.env.VITE_GEMINI_MASTER_MODEL || 'models/gemini-flash-latest'
 
 const UNSUPPORTED_SCHEMA_KEYS = new Set([
@@ -78,8 +78,8 @@ function validatePlan(plan) {
   return REQUIRED_FIELDS.every((f) => f in plan)
 }
 
-async function callGemini(userInput) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/${MASTER_MODEL}:generateContent?key=${API_KEY}`
+async function callGeminiWithKey(apiKey, userInput) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/${MASTER_MODEL}:generateContent?key=${apiKey}`
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
     contents: [{ role: 'user', parts: [{ text: userInput }] }],
@@ -102,10 +102,28 @@ async function callGemini(userInput) {
   return JSON.parse(text)
 }
 
+// Tries each configured API key in order — falls through to the next on failure
+// (invalid key, rate limit, quota exhausted, etc.) until one succeeds.
+async function callGemini(userInput) {
+  let lastErr
+  for (let i = 0; i < GEMINI_API_KEYS.length; i++) {
+    try {
+      return await callGeminiWithKey(GEMINI_API_KEYS[i], userInput)
+    } catch (err) {
+      lastErr = err
+      console.warn(
+        `[master-prompt] key #${i + 1}/${GEMINI_API_KEYS.length} failed, ${i + 1 < GEMINI_API_KEYS.length ? 'trying next key' : 'no keys left'}`,
+        err instanceof Error ? err.message : err
+      )
+    }
+  }
+  throw lastErr || new Error('no working api key')
+}
+
 // Sends the raw transcript to the master prompt and returns a validated plan.
 // Retries once on a validation failure per the prompt spec's usage_note.
 export async function generatePlan(userInput) {
-  if (!API_KEY) throw new Error('missing VITE_GEMINI_API_KEY')
+  if (GEMINI_API_KEYS.length === 0) throw new Error('missing VITE_GEMINI_API_KEY')
   let plan = await callGemini(userInput)
   if (!validatePlan(plan)) {
     plan = await callGemini(userInput)

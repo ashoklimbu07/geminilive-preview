@@ -11,7 +11,8 @@ export const STATUS = {
 
 // Wraps the Gemini Live websocket + mic/player plumbing: connect, stream audio in,
 // buffer streamed transcripts per turn, and surface plain status/messages state.
-export function useGeminiLive({ apiKey, model, systemInstruction, planTriggerPhrase, onPlanTrigger }) {
+// `apiKeys` is tried in order — if a key is invalid/rate-limited/quota-exhausted, the next one is used.
+export function useGeminiLive({ apiKeys, model, systemInstruction, planTriggerPhrase, onPlanTrigger }) {
   const [status, setStatus] = useState('idle')
   const [messages, setMessages] = useState([]) // {role: 'user'|'model', text, streaming, timestamp}
   const wsRef = useRef(null)
@@ -69,14 +70,8 @@ export function useGeminiLive({ apiKey, model, systemInstruction, planTriggerPhr
     }
   }
 
-  function connect() {
+  function connectWithKey(apiKey) {
     return new Promise((resolve, reject) => {
-      if (!apiKey) {
-        setStatus('error')
-        appendOrCreate('model', '[Missing VITE_GEMINI_API_KEY — set it in .env and restart the dev server]')
-        reject(new Error('missing api key'))
-        return
-      }
       setStatus('connecting')
       const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`
       const ws = new WebSocket(url)
@@ -171,6 +166,13 @@ export function useGeminiLive({ apiKey, model, systemInstruction, planTriggerPhr
           reason: event.reason || '(no reason sent by server)',
           wasClean: event.wasClean,
         })
+        // Closed before setup completed — this is a connection failure, let connect()'s
+        // fallback loop decide whether to try the next key, not a mid-session drop.
+        if (!settled) {
+          settled = true
+          reject(new Error(event.reason || 'connection closed before setup completed'))
+          return
+        }
         const wasActive = holdingRef.current
         holdingRef.current = false
         micRef.current?.stop()
@@ -185,12 +187,33 @@ export function useGeminiLive({ apiKey, model, systemInstruction, planTriggerPhr
         } else {
           setStatus((s) => (s !== 'error' ? 'idle' : s))
         }
-        if (!settled) {
-          settled = true
-          reject(new Error(event.reason || 'connection closed before setup completed'))
-        }
       }
     })
+  }
+
+  // Tries each configured API key in order; falls through to the next on failure
+  // (invalid key, rate limit, quota exhausted, etc.) until one connects.
+  async function connect() {
+    if (apiKeys.length === 0) {
+      setStatus('error')
+      appendOrCreate('model', '[Missing VITE_GEMINI_API_KEY — set it in .env and restart the dev server]')
+      throw new Error('missing api key')
+    }
+    let lastErr
+    for (let i = 0; i < apiKeys.length; i++) {
+      if (!holdingRef.current) throw lastErr || new Error('stopped before connecting')
+      try {
+        return await connectWithKey(apiKeys[i])
+      } catch (err) {
+        lastErr = err
+        console.warn(
+          `[gemini-live] key #${i + 1}/${apiKeys.length} failed, ${i + 1 < apiKeys.length ? 'trying next key' : 'no keys left'}`,
+          err instanceof Error ? err.message : err
+        )
+      }
+    }
+    appendOrCreate('model', '[All configured API keys failed — check your keys/quota]')
+    throw lastErr || new Error('no working api key')
   }
 
   async function startListening() {

@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { useGeminiLive } from './hooks/useGeminiLive'
 import { useSessions } from './hooks/useSessions'
 import { usePlanner, loadTodayTasks } from './hooks/usePlanner'
+import { GEMINI_API_KEYS } from './apiKeys'
 import ConversationView from './ConversationView'
 import PlanView from './PlanView'
 import BrainThinking from './BrainThinking'
 import TodayView from './TodayView'
 import NavBar from './NavBar'
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
 
 // Tier 1: keeps the user talking, and hands off to Tier 2 the moment a task lands cleanly.
@@ -28,8 +28,8 @@ If something is genuinely ambiguous (missing time or deadline), ask a single sho
 instead. Never ask more than one question in a row. Never stack multiple sentences otherwise.`
 
 console.log('[gemini-live] config', {
-  apiKeyConfigured: Boolean(API_KEY),
-  apiKeyPreview: API_KEY ? `${API_KEY.slice(0, 6)}…${API_KEY.slice(-4)}` : null,
+  apiKeysConfigured: GEMINI_API_KEYS.length,
+  apiKeyPreview: GEMINI_API_KEYS.map((k) => `${k.slice(0, 6)}…${k.slice(-4)}`),
   model: MODEL,
 })
 
@@ -38,7 +38,7 @@ function App() {
   const planner = usePlanner()
 
   const live = useGeminiLive({
-    apiKey: API_KEY,
+    apiKeys: GEMINI_API_KEYS,
     model: MODEL,
     systemInstruction: LIVE_SYSTEM_INSTRUCTION,
     planTriggerPhrase: PLAN_TRIGGER_PHRASE,
@@ -110,7 +110,7 @@ function App() {
           isViewingPast={isViewingPast}
           onBackToCurrent={() => setViewingSessionId(activeSessionId)}
           planError={planner.planError}
-          apiKeyConfigured={Boolean(API_KEY)}
+          apiKeyConfigured={GEMINI_API_KEYS.length > 0}
           sessions={sessions}
           activeSessionId={activeSessionId}
           viewingSessionId={viewingSessionId}
