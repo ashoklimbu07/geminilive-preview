@@ -254,9 +254,13 @@ function App() {
         }
         if (sc.modelTurn?.parts) {
           for (const part of sc.modelTurn.parts) {
+            console.log('[gemini-live] modelTurn part', part)
             if (part.inlineData?.data) {
               micRef.current?.setMuted(true)
               playerRef.current?.playChunk(part.inlineData.data)
+            }
+            if (part.text) {
+              modelTurnRef.current += part.text
             }
           }
         }
