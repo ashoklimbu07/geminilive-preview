@@ -2,7 +2,7 @@
 import promptSpec from '../task-chunking-master-prompt.json'
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
-const MASTER_MODEL = import.meta.env.VITE_GEMINI_MASTER_MODEL || 'models/gemini-2.5-flash'
+const MASTER_MODEL = import.meta.env.VITE_GEMINI_MASTER_MODEL || 'models/gemini-flash-latest'
 
 const UNSUPPORTED_SCHEMA_KEYS = new Set([
   '$schema',
