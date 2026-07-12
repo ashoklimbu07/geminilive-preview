@@ -4,6 +4,7 @@ import { generatePlan } from './masterPrompt'
 import PlanView from './PlanView'
 import BrainThinking from './BrainThinking'
 import TodayView from './TodayView'
+import NavBar from './NavBar'
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
@@ -34,9 +35,9 @@ console.log('[gemini-live] config', {
 })
 
 const STATUS = {
-  idle: { label: 'Idle', color: 'bg-neutral-500' },
+  idle: { label: 'Idle', color: 'bg-[#c9a898]' },
   connecting: { label: 'Connecting…', color: 'bg-amber-400' },
-  connected: { label: 'Connected', color: 'bg-teal-400' },
+  connected: { label: 'Connected', color: 'bg-rose-400' },
   listening: { label: 'Listening', color: 'bg-orange-500' },
   error: { label: 'Error', color: 'bg-red-500' },
 }
@@ -389,17 +390,22 @@ function App() {
   const st = STATUS[status]
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center px-4 py-10 gap-8">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-teal-300 via-teal-200 to-orange-300 bg-clip-text text-transparent">
-          Untangle
-        </h1>
-        <p className="text-neutral-400 text-sm mt-1">Say it out loud. We'll untangle it into a plan.</p>
+    <div className="min-h-screen bg-[radial-gradient(ellipse_120%_60%_at_50%_-10%,#ffd9b8_0%,#fff3ea_55%)] text-[#4a2f27] flex flex-col items-center px-4 pt-8 pb-28 md:pb-10 gap-6">
+      <div className="w-full max-w-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="text-center md:text-left">
+          <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-rose-500 via-orange-400 to-pink-500 bg-clip-text text-transparent">
+            Untangle
+          </h1>
+          <p className="text-[#8a6a5c] text-sm mt-1">Say it out loud. We'll untangle it into a plan.</p>
+        </div>
+        <div className="hidden md:block">
+          <NavBar view={view} onNavigate={setView} todayCount={todayTasks.filter((t) => !t.done).length} />
+        </div>
       </div>
 
       {view === 'conversation' && (
         <div className="w-full max-w-xl flex flex-col items-center gap-8 animate-[fadein_.3s_ease]">
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
+          <div className="flex items-center gap-2 text-sm text-[#8a6a5c]">
             <span className={`inline-block w-2.5 h-2.5 rounded-full ${st.color}`} />
             {st.label}
           </div>
@@ -408,15 +414,15 @@ function App() {
             type="button"
             onClick={toggleListening}
             className={`w-32 h-32 rounded-full flex items-center justify-center text-sm font-medium select-none transition-transform active:scale-95
-              ${status === 'listening' ? 'bg-orange-500 shadow-[0_0_0_10px_rgba(249,115,22,0.2)]' : 'bg-teal-500 hover:bg-teal-400 shadow-[0_0_0_10px_rgba(45,212,191,0.12)]'}`}
+              ${status === 'listening' ? 'bg-orange-500 shadow-[0_0_0_10px_rgba(249,115,22,0.2)]' : 'bg-rose-500 hover:bg-rose-400 shadow-[0_0_0_10px_rgba(244,63,94,0.15)]'} text-white`}
           >
             {status === 'listening' ? 'Stop' : status === 'connecting' ? 'Connecting…' : 'Tap to talk'}
           </button>
 
-          <div className="w-full flex-1 flex flex-col gap-3 bg-neutral-900 rounded-xl p-4 min-h-[300px] max-h-[50vh] overflow-y-auto">
+          <div className="w-full flex-1 flex flex-col gap-3 bg-white/80 border border-[#f0d0b8] rounded-xl p-4 min-h-[300px] max-h-[50vh] overflow-y-auto">
             {messages.length === 0 && (
-              <p className="text-neutral-500 text-sm m-auto text-center px-6">
-                Just start talking — brain-dump whatever's on your mind. We'll turn it into a plan when you're ready.
+              <p className="text-[#a68f86] text-sm m-auto text-center px-6">
+                Brain-dump whatever's on your mind, and we'll turn it into a plan. After your conversation ,say plan my brian dump"
               </p>
             )}
             {messages.map((m, i) => (
@@ -424,8 +430,8 @@ function App() {
                 key={i}
                 className={`max-w-[85%] px-3 py-2 rounded-lg text-sm leading-relaxed ${
                   m.role === 'user'
-                    ? 'self-end bg-teal-500/20 text-teal-100'
-                    : 'self-start bg-neutral-800 text-neutral-200'
+                    ? 'self-end bg-rose-500/15 text-rose-700'
+                    : 'self-start bg-[#ffe4cf] text-[#5c4438]'
                 }`}
               >
                 <span className="block text-[10px] uppercase tracking-wide opacity-60 mb-0.5">
@@ -435,16 +441,6 @@ function App() {
               </div>
             ))}
           </div>
-
-          {todayTasks.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setView('today')}
-              className="text-xs px-4 py-2 rounded-full bg-neutral-900 border border-neutral-800 hover:border-teal-500/40 text-neutral-300"
-            >
-              ← Back to today's tasks
-            </button>
-          )}
 
           {planError && <p className="text-red-400 text-xs max-w-md text-center">{planError}</p>}
 
@@ -472,6 +468,10 @@ function App() {
       {view === 'today' && (
         <TodayView tasks={todayTasks} onToggleDone={toggleTodayTask} onNewBrainDump={startNewBrainDump} />
       )}
+
+      <div className="md:hidden">
+        <NavBar view={view} onNavigate={setView} todayCount={todayTasks.filter((t) => !t.done).length} />
+      </div>
     </div>
   )
 }

@@ -25,9 +25,9 @@ export default function BrainThinking() {
   return (
     <div className="flex flex-col items-center gap-8 py-14 animate-[fadein_.3s_ease] w-full max-w-sm">
       <div className="relative w-24 h-24 flex items-center justify-center">
-        <span className="absolute inset-0 rounded-full bg-teal-400/20 animate-ping" />
-        <span className="absolute inset-2 rounded-full bg-teal-400/10 animate-pulse" />
-        <svg viewBox="0 0 64 64" className="w-14 h-14 relative text-teal-300 drop-shadow-[0_0_10px_rgba(126,232,193,0.5)]">
+        <span className="absolute inset-0 rounded-full bg-rose-400/20 animate-ping" />
+        <span className="absolute inset-2 rounded-full bg-rose-400/10 animate-pulse" />
+        <svg viewBox="0 0 64 64" className="w-14 h-14 relative text-rose-500 drop-shadow-[0_0_10px_rgba(251,113,133,0.5)]">
           <path
             d="M32 8c-8 0-14 5-14 12 0 3 1 5 3 7-3 2-5 5-5 9 0 7 6 12 13 12h6c7 0 13-5 13-12 0-4-2-7-5-9 2-2 3-4 3-7 0-7-6-12-14-12z"
             fill="none"
@@ -48,26 +48,26 @@ export default function BrainThinking() {
               <span
                 className={`shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] transition-colors duration-300 ${
                   state === 'done'
-                    ? 'bg-teal-400 text-neutral-900'
+                    ? 'bg-rose-400 text-white'
                     : state === 'active'
-                      ? 'bg-teal-400/20 text-teal-300 ring-2 ring-teal-400 animate-pulse'
-                      : 'bg-neutral-800 text-neutral-600'
+                      ? 'bg-rose-400/20 text-rose-600 ring-2 ring-rose-400 animate-pulse'
+                      : 'bg-[#ffe4cf] text-[#c9a898]'
                 }`}
               >
                 {state === 'done' ? '✓' : i + 1}
               </span>
               <span
                 className={`text-sm transition-colors duration-300 ${
-                  state === 'pending' ? 'text-neutral-600' : state === 'active' ? 'text-neutral-100' : 'text-neutral-400'
+                  state === 'pending' ? 'text-[#c9a898]' : state === 'active' ? 'text-[#4a2f27]' : 'text-[#8a6a5c]'
                 }`}
               >
                 {label}
               </span>
               {state === 'active' && (
                 <span className="ml-auto flex gap-0.5">
-                  <span className="w-1 h-1 rounded-full bg-teal-300 animate-bounce [animation-delay:-0.2s]" />
-                  <span className="w-1 h-1 rounded-full bg-teal-300 animate-bounce [animation-delay:-0.1s]" />
-                  <span className="w-1 h-1 rounded-full bg-teal-300 animate-bounce" />
+                  <span className="w-1 h-1 rounded-full bg-rose-500 animate-bounce [animation-delay:-0.2s]" />
+                  <span className="w-1 h-1 rounded-full bg-rose-500 animate-bounce [animation-delay:-0.1s]" />
+                  <span className="w-1 h-1 rounded-full bg-rose-500 animate-bounce" />
                 </span>
               )}
             </li>
