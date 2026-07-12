@@ -6,6 +6,7 @@ import PlanView from './PlanView'
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
 
+<<<<<<< HEAD
 // Tier 1: keeps the user talking, and hands off to Tier 2 the moment a task lands cleanly.
 const PLAN_TRIGGER_PHRASE = 'preparing your plan'
 const LIVE_SYSTEM_INSTRUCTION = `You are a passive listener for a user brain-dumping tasks out loud.
@@ -21,6 +22,14 @@ incomplete input.
 
 If something is genuinely ambiguous (missing time or deadline), ask a single short clarifying question
 instead. Never ask more than one question in a row. Never stack multiple sentences otherwise.`
+=======
+// Tier 1: keeps the user talking without hijacking the conversation with advice or planning.
+const LIVE_SYSTEM_INSTRUCTION = `You are a passive listener for a user brain-dumping tasks out loud.
+Do NOT give advice, do NOT problem-solve, do NOT suggest plans or next steps.
+Only respond with a short acknowledgment (e.g. "ok", "got it", "noted") or, if something is genuinely
+ambiguous (like a missing time or deadline), a single short clarifying question. Never ask more than
+one question in a row. Never stack multiple sentences. Keep every response to at most 10 words.`
+>>>>>>> d8c9c1056751441bd83ac59a081ff924b314fa2a
 
 const PLAN_STORAGE_KEY = 'task-chunking:last-session'
 
@@ -40,9 +49,15 @@ const STATUS = {
 
 function App() {
   const [status, setStatus] = useState('idle')
+<<<<<<< HEAD
   const [messages, setMessages] = useState([]) // {role: 'user'|'model', text}
   const [view, setView] = useState('conversation') // 'conversation' | 'processing' | 'plan'
   const [plan, setPlan] = useState(null)
+=======
+  const [messages, setMessages] = useState([]) // {role: 'user'|'model', text, streaming, timestamp}
+  const [plan, setPlan] = useState(null)
+  const [planLoading, setPlanLoading] = useState(false)
+>>>>>>> d8c9c1056751441bd83ac59a081ff924b314fa2a
   const [planError, setPlanError] = useState(null)
   const wsRef = useRef(null)
   const micRef = useRef(null)
@@ -72,7 +87,7 @@ function App() {
         copy[copy.length - 1] = { ...last, text: last.text + text }
         return copy
       }
-      return [...prev, { role, text, streaming: true }]
+      return [...prev, { role, text, streaming: true, timestamp: Date.now() }]
     })
   }
 
@@ -329,6 +344,64 @@ function App() {
     }
   }
 
+  // Tier 2: freeze the transcript and hand only the user's utterances to the master prompt.
+  async function preparePlan() {
+    const userText = messages
+      .filter((m) => m.role === 'user' && m.text.trim())
+      .map((m) => m.text.trim())
+      .join('\n')
+
+    if (!userText) {
+      setPlanError('Nothing captured yet — talk for a bit first.')
+      return
+    }
+
+    setPlanError(null)
+    setPlanLoading(true)
+    try {
+      const result = await generatePlan(userText)
+      setPlan({ ...result, chunks: result.chunks.map((c) => ({ ...c, done: false })) })
+    } catch (err) {
+      console.error('[master-prompt] failed to generate plan', err instanceof Error ? err.message : err)
+      setPlanError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  function moveChunk(index, delta) {
+    setPlan((prev) => {
+      if (!prev) return prev
+      const chunks = [...prev.chunks]
+      const target = index + delta
+      if (target < 0 || target >= chunks.length) return prev
+      ;[chunks[index], chunks[target]] = [chunks[target], chunks[index]]
+      return { ...prev, chunks }
+    })
+  }
+
+  function removeChunk(id) {
+    setPlan((prev) => (prev ? { ...prev, chunks: prev.chunks.filter((c) => c.id !== id) } : prev))
+  }
+
+  function toggleChunkDone(id) {
+    setPlan((prev) =>
+      prev ? { ...prev, chunks: prev.chunks.map((c) => (c.id === id ? { ...c, done: !c.done } : c)) } : prev
+    )
+  }
+
+  function confirmPlan() {
+    if (!plan) return
+    try {
+      localStorage.setItem(
+        PLAN_STORAGE_KEY,
+        JSON.stringify({ savedAt: Date.now(), transcript: messages, plan })
+      )
+    } catch (err) {
+      console.error('[master-prompt] failed to persist plan', err instanceof Error ? err.message : err)
+    }
+  }
+
   const st = STATUS[status]
 
   return (
@@ -338,11 +411,65 @@ function App() {
         <p className="text-neutral-400 text-sm mt-1">Live streaming voice-to-text test</p>
       </div>
 
+<<<<<<< HEAD
       {view === 'conversation' && (
         <div className="w-full max-w-xl flex flex-col items-center gap-8 animate-[fadein_.3s_ease]">
           <div className="flex items-center gap-2 text-sm text-neutral-400">
             <span className={`inline-block w-2.5 h-2.5 rounded-full ${st.color}`} />
             {st.label}
+=======
+      <div className="flex items-center gap-2 text-sm text-neutral-400">
+        <span className={`inline-block w-2.5 h-2.5 rounded-full ${st.color}`} />
+        {st.label}
+      </div>
+
+      <button
+        type="button"
+        onClick={toggleListening}
+        className={`w-32 h-32 rounded-full flex items-center justify-center text-sm font-medium select-none transition-transform active:scale-95
+          ${status === 'listening' ? 'bg-red-600 shadow-[0_0_0_10px_rgba(220,38,38,0.2)]' : 'bg-violet-600 hover:bg-violet-500'}`}
+      >
+        {status === 'listening' ? 'Stop' : status === 'connecting' ? 'Connecting…' : 'Tap to talk'}
+      </button>
+
+      <button
+        type="button"
+        onClick={preparePlan}
+        disabled={planLoading || messages.length === 0}
+        className="text-xs px-4 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 text-neutral-200"
+      >
+        {planLoading ? 'Preparing plan…' : 'Prepare plan'}
+      </button>
+
+      {planError && <p className="text-red-400 text-xs max-w-md text-center">{planError}</p>}
+
+      <PlanView
+        plan={plan}
+        onMove={moveChunk}
+        onRemove={removeChunk}
+        onToggleDone={toggleChunkDone}
+        onConfirm={confirmPlan}
+        onDismiss={() => setPlan(null)}
+      />
+
+      <div className="w-full max-w-xl flex-1 flex flex-col gap-3 bg-neutral-900 rounded-xl p-4 min-h-[300px] max-h-[50vh] overflow-y-auto">
+        {messages.length === 0 && (
+          <p className="text-neutral-500 text-sm m-auto">Transcript will appear here…</p>
+        )}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`max-w-[85%] px-3 py-2 rounded-lg text-sm leading-relaxed ${
+              m.role === 'user'
+                ? 'self-end bg-violet-600/30 text-violet-100'
+                : 'self-start bg-neutral-800 text-neutral-200'
+            }`}
+          >
+            <span className="block text-[10px] uppercase tracking-wide opacity-60 mb-0.5">
+              {m.role === 'user' ? 'You' : 'Gemini'}
+            </span>
+            {m.text}
+>>>>>>> d8c9c1056751441bd83ac59a081ff924b314fa2a
           </div>
 
           <button

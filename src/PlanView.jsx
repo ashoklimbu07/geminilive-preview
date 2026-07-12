@@ -59,7 +59,7 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
 
   if (plan.mode === 'needs_human_support') {
     return (
-      <div className="w-full max-w-xl bg-amber-950/40 border border-amber-800/60 rounded-xl p-4 text-sm text-amber-100 animate-[fadein_.3s_ease]">
+      <div className="w-full max-w-xl bg-amber-950/40 border border-amber-800/60 rounded-xl p-4 text-sm text-amber-100">
         <p className="font-medium mb-1">{plan.summary}</p>
         <p>{plan.support_note}</p>
         <button type="button" onClick={onDismiss} className="mt-3 text-xs text-amber-300 hover:text-amber-100">
@@ -71,7 +71,7 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
 
   if (plan.mode === 'outside_scope') {
     return (
-      <div className="w-full max-w-xl bg-neutral-800 rounded-xl p-4 text-sm text-neutral-200 animate-[fadein_.3s_ease]">
+      <div className="w-full max-w-xl bg-neutral-800 rounded-xl p-4 text-sm text-neutral-200">
         <p>{plan.summary}</p>
         <button type="button" onClick={onDismiss} className="mt-3 text-xs text-neutral-400 hover:text-neutral-100">
           Close
@@ -81,7 +81,7 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
   }
 
   return (
-    <div className="w-full max-w-xl bg-neutral-900 border border-violet-800/40 rounded-xl p-4 flex flex-col gap-3 animate-[fadein_.35s_ease]">
+    <div className="w-full max-w-xl bg-neutral-900 border border-violet-800/40 rounded-xl p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wide">Your plan</h2>
         <button type="button" onClick={onDismiss} className="text-neutral-500 hover:text-neutral-100 text-xs">
