@@ -6,7 +6,7 @@ function ChunkRow({ chunk, index, total, onMove, onRemove, onToggleDone }) {
         type="checkbox"
         checked={Boolean(chunk.done)}
         onChange={() => onToggleDone(chunk.id)}
-        className="mt-1 accent-violet-500"
+        className="mt-1 accent-teal-500"
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -81,9 +81,9 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
   }
 
   return (
-    <div className="w-full max-w-xl bg-neutral-900 border border-violet-800/40 rounded-xl p-4 flex flex-col gap-3">
+    <div className="w-full max-w-xl bg-neutral-900 border border-teal-800/40 rounded-xl p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-violet-300 uppercase tracking-wide">Your plan</h2>
+        <h2 className="text-sm font-semibold text-teal-300 uppercase tracking-wide">Your plan</h2>
         <button type="button" onClick={onDismiss} className="text-neutral-500 hover:text-neutral-100 text-xs">
           ✕
         </button>
@@ -116,7 +116,7 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
           <h3 className="text-xs uppercase tracking-wide text-neutral-400">Other ways forward</h3>
           {plan.alternative_solutions.map((a, i) => (
             <div key={i} className="bg-neutral-800/70 rounded-lg px-3 py-2 text-sm text-neutral-200">
-              <span className="text-[10px] uppercase tracking-wide text-violet-400 block mb-0.5">
+              <span className="text-[10px] uppercase tracking-wide text-teal-400 block mb-0.5">
                 {a.type.replace(/_/g, ' ')}
               </span>
               {a.description}
@@ -142,7 +142,7 @@ export default function PlanView({ plan, onMove, onRemove, onToggleDone, onConfi
         <button
           type="button"
           onClick={onConfirm}
-          className="text-xs px-3 py-1.5 rounded-md bg-violet-600 hover:bg-violet-500 text-white"
+          className="text-xs px-3 py-1.5 rounded-md bg-teal-500 hover:bg-teal-400 text-white"
         >
           Confirm plan
         </button>

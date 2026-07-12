@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { MicStreamer, AudioPlayer } from './audio'
 import { generatePlan } from './masterPrompt'
 import PlanView from './PlanView'
+import BrainThinking from './BrainThinking'
+import TodayView from './TodayView'
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'models/gemini-2.5-flash-live-preview'
@@ -23,6 +25,7 @@ If something is genuinely ambiguous (missing time or deadline), ask a single sho
 instead. Never ask more than one question in a row. Never stack multiple sentences otherwise.`
 
 const PLAN_STORAGE_KEY = 'task-chunking:last-session'
+const TODAY_TASKS_KEY = 'untangle:today-tasks'
 
 console.log('[gemini-live] config', {
   apiKeyConfigured: Boolean(API_KEY),
@@ -31,19 +34,28 @@ console.log('[gemini-live] config', {
 })
 
 const STATUS = {
-  idle: { label: 'Idle', color: 'bg-gray-400' },
-  connecting: { label: 'Connecting…', color: 'bg-yellow-400' },
-  connected: { label: 'Connected', color: 'bg-green-500' },
-  listening: { label: 'Listening', color: 'bg-red-500' },
-  error: { label: 'Error', color: 'bg-red-700' },
+  idle: { label: 'Idle', color: 'bg-neutral-500' },
+  connecting: { label: 'Connecting…', color: 'bg-amber-400' },
+  connected: { label: 'Connected', color: 'bg-teal-400' },
+  listening: { label: 'Listening', color: 'bg-orange-500' },
+  error: { label: 'Error', color: 'bg-red-500' },
+}
+
+function loadTodayTasks() {
+  try {
+    const raw = localStorage.getItem(TODAY_TASKS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
 }
 
 function App() {
   const [status, setStatus] = useState('idle')
   const [messages, setMessages] = useState([]) // {role: 'user'|'model', text, streaming, timestamp}
-  const [view, setView] = useState('conversation') // 'conversation' | 'processing' | 'plan'
+  const [todayTasks, setTodayTasks] = useState(loadTodayTasks)
+  const [view, setView] = useState(() => (loadTodayTasks().length > 0 ? 'today' : 'conversation')) // 'conversation' | 'processing' | 'plan' | 'today'
   const [plan, setPlan] = useState(null)
-  const [planLoading, setPlanLoading] = useState(false)
   const [planError, setPlanError] = useState(null)
   const wsRef = useRef(null)
   const micRef = useRef(null)
@@ -125,32 +137,6 @@ function App() {
     }
   }
 
-  // Tier 2: freeze the transcript and hand only the user's utterances to the master prompt.
-  async function preparePlan() {
-    const userText = messages
-      .filter((m) => m.role === 'user' && m.text.trim())
-      .map((m) => m.text.trim())
-      .join('\n')
-
-    if (!userText) {
-      setPlanError('Nothing captured yet — talk for a bit first.')
-      return
-    }
-
-    setPlanError(null)
-    setPlanLoading(true)
-    try {
-      const result = await generatePlan(userText)
-      setPlan({ ...result, chunks: result.chunks.map((c) => ({ ...c, done: false })) })
-      setView('plan')
-    } catch (err) {
-      console.error('[master-prompt] failed to generate plan', err instanceof Error ? err.message : err)
-      setPlanError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setPlanLoading(false)
-    }
-  }
-
   function moveChunk(index, delta) {
     setPlan((prev) => {
       if (!prev) return prev
@@ -176,13 +162,39 @@ function App() {
     if (!plan) return
     try {
       localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), transcript: messages, plan }))
+      setTodayTasks((prev) => {
+        const merged = [...prev, ...plan.chunks]
+        localStorage.setItem(TODAY_TASKS_KEY, JSON.stringify(merged))
+        return merged
+      })
     } catch (err) {
       console.error('[master-prompt] failed to persist plan', err instanceof Error ? err.message : err)
     }
+    setPlan(null)
+    setMessages([])
+    setView('today')
   }
 
   function dismissPlan() {
     setPlan(null)
+    setView('conversation')
+  }
+
+  function toggleTodayTask(id) {
+    setTodayTasks((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+      try {
+        localStorage.setItem(TODAY_TASKS_KEY, JSON.stringify(next))
+      } catch (err) {
+        console.error('[today] failed to persist tasks', err instanceof Error ? err.message : err)
+      }
+      return next
+    })
+  }
+
+  function startNewBrainDump() {
+    setMessages([])
+    setPlanError(null)
     setView('conversation')
   }
 
@@ -379,8 +391,10 @@ function App() {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center px-4 py-10 gap-8">
       <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Gemini 2.5 Flash Live Preview</h1>
-        <p className="text-neutral-400 text-sm mt-1">Live streaming voice-to-text test</p>
+        <h1 className="text-2xl font-semibold tracking-tight bg-gradient-to-r from-teal-300 via-teal-200 to-orange-300 bg-clip-text text-transparent">
+          Untangle
+        </h1>
+        <p className="text-neutral-400 text-sm mt-1">Say it out loud. We'll untangle it into a plan.</p>
       </div>
 
       {view === 'conversation' && (
@@ -394,40 +408,43 @@ function App() {
             type="button"
             onClick={toggleListening}
             className={`w-32 h-32 rounded-full flex items-center justify-center text-sm font-medium select-none transition-transform active:scale-95
-              ${status === 'listening' ? 'bg-red-600 shadow-[0_0_0_10px_rgba(220,38,38,0.2)]' : 'bg-violet-600 hover:bg-violet-500'}`}
+              ${status === 'listening' ? 'bg-orange-500 shadow-[0_0_0_10px_rgba(249,115,22,0.2)]' : 'bg-teal-500 hover:bg-teal-400 shadow-[0_0_0_10px_rgba(45,212,191,0.12)]'}`}
           >
             {status === 'listening' ? 'Stop' : status === 'connecting' ? 'Connecting…' : 'Tap to talk'}
           </button>
 
-          <button
-            type="button"
-            onClick={preparePlan}
-            disabled={planLoading || messages.length === 0}
-            className="text-xs px-4 py-2 rounded-full bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40 text-neutral-200"
-          >
-            {planLoading ? 'Preparing plan…' : 'Prepare plan'}
-          </button>
-
           <div className="w-full flex-1 flex flex-col gap-3 bg-neutral-900 rounded-xl p-4 min-h-[300px] max-h-[50vh] overflow-y-auto">
             {messages.length === 0 && (
-              <p className="text-neutral-500 text-sm m-auto">Transcript will appear here…</p>
+              <p className="text-neutral-500 text-sm m-auto text-center px-6">
+                Just start talking — brain-dump whatever's on your mind. We'll turn it into a plan when you're ready.
+              </p>
             )}
             {messages.map((m, i) => (
               <div
                 key={i}
                 className={`max-w-[85%] px-3 py-2 rounded-lg text-sm leading-relaxed ${
                   m.role === 'user'
-                    ? 'self-end bg-violet-600/30 text-violet-100'
+                    ? 'self-end bg-teal-500/20 text-teal-100'
                     : 'self-start bg-neutral-800 text-neutral-200'
                 }`}
               >
                 <span className="block text-[10px] uppercase tracking-wide opacity-60 mb-0.5">
-                  {m.role === 'user' ? 'You' : 'Gemini'}
+                  {m.role === 'user' ? 'You' : 'Untangle'}
                 </span>
                 {m.text}
               </div>
             ))}
           </div>
+
+          {todayTasks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setView('today')}
+              className="text-xs px-4 py-2 rounded-full bg-neutral-900 border border-neutral-800 hover:border-teal-500/40 text-neutral-300"
+            >
+              ← Back to today's tasks
+            </button>
+          )}
 
           {planError && <p className="text-red-400 text-xs max-w-md text-center">{planError}</p>}
 
@@ -439,12 +456,7 @@ function App() {
         </div>
       )}
 
-      {view === 'processing' && (
-        <div className="flex flex-col items-center gap-4 py-16 animate-[fadein_.3s_ease]">
-          <div className="w-12 h-12 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
-          <p className="text-neutral-300 text-sm">Preparing your plan…</p>
-        </div>
-      )}
+      {view === 'processing' && <BrainThinking />}
 
       {view === 'plan' && (
         <PlanView
@@ -455,6 +467,10 @@ function App() {
           onConfirm={confirmPlan}
           onDismiss={dismissPlan}
         />
+      )}
+
+      {view === 'today' && (
+        <TodayView tasks={todayTasks} onToggleDone={toggleTodayTask} onNewBrainDump={startNewBrainDump} />
       )}
     </div>
   )
