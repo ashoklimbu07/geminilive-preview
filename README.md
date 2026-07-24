@@ -1,16 +1,62 @@
-# React + Vite
+# Gemini Live Voice Assistant
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite app integrating Gemini Live for real-time voice conversation, paired with an LLM-driven planning flow.
 
-Currently, two official plugins are available:
+## Status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Tested** -> Gemini Live voice model (real-time voice session via `useGeminiLive`)
+- **Integrated LLM** -> Master prompt used to break down tasks into a plan (`masterPrompt.js` + `task-chunking-master-prompt.json`)
 
-## React Compiler
+## Folder Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+geminitest/
+├── public/                        # Static assets served as-is
+│   ├── favicon.svg
+│   ├── icon.svg / icon-maskable.svg / icons.svg
+│   ├── manifest.webmanifest        # PWA manifest
+│   └── sw.js                       # Service worker
+├── src/
+│   ├── assets/                     # Images used in the app
+│   │   ├── hero.png
+│   │   ├── react.svg
+│   │   └── vite.svg
+│   ├── hooks/
+│   │   ├── useGeminiLive.js        # Gemini Live voice session hook
+│   │   ├── usePlanner.js           # Task planning/LLM hook
+│   │   └── useSessions.js          # Session state/management hook
+│   ├── App.jsx                     # Root app component
+│   ├── BrainThinking.jsx           # "Thinking" state UI
+│   ├── ConversationView.jsx        # Voice conversation UI
+│   ├── NavBar.jsx                  # Navigation bar
+│   ├── PlanView.jsx                # Task plan display
+│   ├── TodayView.jsx               # Today's tasks view
+│   ├── apiKeys.js                  # API key pool/rotation logic
+│   ├── audio.js                    # Audio capture/playback utilities
+│   ├── devLogger.js                # Dev-only logging helper
+│   ├── index.css                   # Global styles (Tailwind)
+│   ├── main.jsx                    # App entry point
+│   └── masterPrompt.js             # Master prompt to break down tasks
+├── task-chunking-master-prompt.json # Master prompt source/config for task chunking
+├── index.html                      # Vite HTML entry
+├── vite.config.js                  # Vite config
+├── .env.example                    # Env var template
+├── package.json
+└── README.md
+```
 
-## Expanding the Oxlint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npm install
+npm run dev
+```
+
+Copy `.env.example` to `.env` and fill in the required API keys before running.
+
+## Scripts
+
+- `npm run dev` — start the Vite dev server
+- `npm run build` — production build
+- `npm run preview` — preview the production build
+- `npm run lint` — run oxlint
